@@ -1,0 +1,34 @@
+default_platform(:android)
+
+platform :android do
+  desc "Deploy Android release APK to Firebase App Distribution"
+  lane :distribute_to_firebase do
+    # Validate that the Firebase App ID is provided
+    app_id = ENV["FIREBASE_APP_ID"]
+    if app_id.nil? || app_id.empty?
+      UI.user_error!("FIREBASE_APP_ID environment variable is missing! Please set this in your environment or GitHub Secrets.")
+    end
+
+    # Determine credentials path
+    credentials_file_path = ENV["GOOGLE_APPLICATION_CREDENTIALS"] || "fastlane/firebase-credentials.json"
+    credentials_json = ENV["GOOGLE_APPLICATION_CREDENTIALS_JSON"]
+
+    # Write temporary file on-the-fly in CI environment if injected as a raw secret string
+    if credentials_json && !credentials_json.empty?
+      UI.message("CI/CD pipeline detected: writing Service Account key contents to secure temporary path: #{credentials_file_path}")
+      File.write(credentials_file_path, credentials_json)
+    end
+
+    UI.message("Starting deployment to Firebase App Distribution for App ID: #{app_id}...")
+
+    firebase_app_distribution(
+      app: app_id,
+      apk_path: "../build/app/outputs/flutter-apk/app-release.apk",
+      service_credentials_file: credentials_file_path,
+      groups: "testers",
+      release_notes: "ProdTrack Automated CI/CD Release Build.\nBranch: " + (ENV["GITHUB_REF_NAME"] || "local") + "\nCommit: " + (ENV["GITHUB_SHA"] || "manual-trigger")
+    )
+
+    UI.success("Successfully uploaded APK to Firebase App Distribution!")
+  end
+end

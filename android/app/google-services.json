@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1507202135",
+    "project_id": "prodtrack-app",
+    "storage_bucket": "prodtrack-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1507202135:android:770af3ec751ca0a4403f12",
+        "android_client_info": {
+          "package_name": "com.prodtrack.prodtrack"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcPPcvXyA-hVy-TfglCjHv2Xuwu7oJGi4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

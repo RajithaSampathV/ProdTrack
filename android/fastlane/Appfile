@@ -1,0 +1,2 @@
+json_key_file("") # Path to the service account json file for Google Play / Firebase
+package_name("com.prodtrack.prodtrack") # Aligned with android/app/build.gradle.kts

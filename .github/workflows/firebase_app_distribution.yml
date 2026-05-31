@@ -1,0 +1,113 @@
+name: ProdTrack CI/CD - Firebase App Distribution
+
+on:
+  push:
+    branches:
+      - main
+      - release
+  workflow_dispatch: # Allows manual trigger from GitHub Actions Tab
+
+jobs:
+  # METHOD A: Direct Deployment via official Firebase CLI / App Distribution Action
+  # Highly recommended for fast, containerized workflows with zero Ruby dependencies!
+  deploy_via_firebase_cli:
+    name: Build & Deploy via Direct Firebase CLI
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java Development Kit (JDK)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0' # Aligned with project SDK constraints
+          channel: 'stable'
+          cache: true
+
+      - name: Install Project Dependencies
+        run: flutter pub get
+
+      # Optional: Verify codebase before building
+      - name: Static Code Analysis
+        run: flutter analyze
+
+      - name: Run Unit Tests
+        run: flutter test
+
+      - name: Build Release Android APK
+        run: flutter build apk --release
+
+      # Official Firebase App Distribution GitHub Action
+      # Modern approach: Uses Service Account JSON key string stored in GitHub Secrets
+      - name: Distribute Release to Firebase
+        uses: FirebaseExtended/action-app-distribution@v0.2.2
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          # To authenticate, save your Service Account JSON contents under the CREDENTIAL_FILE_CONTENT secret
+          serviceCredentialsFileContent: ${{ secrets.CREDENTIAL_FILE_CONTENT }}
+          # Alternatively, you can use the legacy FIREBASE_TOKEN (if you haven't set up service credentials yet)
+          # token: ${{ secrets.FIREBASE_TOKEN }}
+          groups: testers # App Distribution testers group
+          file: build/app/outputs/flutter-apk/app-release.apk
+          releaseNotes: |
+            CI/CD Auto-build
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+
+  # METHOD B: Deployment via Fastlane
+  # Excellent if you already use Fastlane locally or want to manage builds through Ruby-based automation.
+  # To run this instead, you can toggle active job triggers or run manually.
+  deploy_via_fastlane:
+    name: Build & Deploy via Fastlane
+    runs-on: ubuntu-latest
+    # To run this job, make sure to set up the fastlane environment variables in your GitHub Secrets
+    needs: [] # Run in parallel or set dependency
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby Environment
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: android
+
+      - name: Set up Java Development Kit (JDK)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Project Dependencies
+        run: flutter pub get
+
+      - name: Build Release Android APK
+        run: flutter build apk --release
+
+      # Run Fastlane lane to upload to Firebase App Distribution
+      - name: Run Fastlane Deployment Lane
+        working-directory: android
+        run: |
+          bundle exec fastlane android distribute_to_firebase
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          # Save your Google Service Account JSON file contents inside GITHUB SECSETS 
+          # as GOOGLE_APPLICATION_CREDENTIALS_JSON. We write it to a temporary file for Fastlane.
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/android/fastlane/firebase-credentials.json
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.CREDENTIAL_FILE_CONTENT }}
